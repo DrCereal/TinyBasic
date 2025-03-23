@@ -4,6 +4,11 @@
 
 #include <Parser.h>
 
+#define VERIFY(a) \
+	if ((a).valid == false) { \
+		ret.valid = false; \
+		return ret; }
+
 Parser::Parser(const char* file_name)
 {
 	m_file_name = file_name;
@@ -16,23 +21,57 @@ void Parser::display_AST()
 	for (std::size_t i = 0; i < m_ast.lines.size(); i++) {
 		Line l = m_ast.lines[i];
 		printf("line: %i\n", l.number);
-		if (l.stmt.print != NULL)
+		if (l.stmt.print != NULL) {
 			display_print(l.stmt.print);
-		else if (l.stmt.end)
+		} else if (l.stmt.let != NULL) {
+			printf("\t%s=\n", l.stmt.let->id.c_str());
+			display_expr(l.stmt.let->expr);
+		} else if (l.stmt.end) {
 			printf("\tend\n");
+		}
 	}
 }
 
 void Parser::parse_syntax()
 {
-	while (!m_lexer.is_eot()) {
+	while (!m_lexer.is_eot())
 		FuncLine();
+}
+
+void Parser::display_factor(Factor f)
+{
+	if (f.var != "")
+		printf("\t\t%s\n", f.var.c_str());
+	else if (f.num != "")
+		printf("\t\t%s\n", f.num.c_str());
+}
+
+void Parser::display_term(Term term)
+{
+	display_factor(term.first);
+	for (Factor f : term.optional) {
+		printf("\t\t%s\n", f.op.c_str());
+		display_factor(f);
+	}
+}
+
+void Parser::display_expr(Expr expr)
+{
+	display_term(expr.first);
+	for (Term term : expr.optional) {
+		printf("\t%s\n", term.op.c_str());
+		display_term(term);
 	}
 }
 
 void Parser::display_print(PrintStmt* stmt)
 {
-	printf("\tprint: %s\n", stmt->list.first.str.c_str());
+	if (stmt->list.first.is_str) {
+		printf("\tprint: %s\n", stmt->list.first.str.c_str());
+	} else {
+		printf("\tprint:\n");
+		display_expr(*(stmt->list.first.expr));
+	}
 }
 
 void Parser::emit_error(unsigned int line, const char* fmt, ...)
@@ -84,21 +123,15 @@ Term Parser::FuncTerm()
 	ret.valid = true;
 	ret.first = FuncFactor();
 
-	if (ret.first.valid == false) {
-		ret.valid = false;
-		return ret;
-	}
+	VERIFY(ret.first);
 
 	while (!m_lexer.is_eot()) {
 		Token t = m_lexer.peek_token();
-		if (t.type == "mul" || t.type == "div") {
+		if (t.type == "mult" || t.type == "div") {
 			m_lexer.get_token();	// Eat
 
 			Factor f = FuncFactor();
-			if (f.valid == false) {
-				ret.valid = false;
-				return ret;
-			}
+			VERIFY(f);
 
 			f.op = t.data;
 			ret.optional.push_back(f);
@@ -133,15 +166,11 @@ Expr Parser::Expression()
 			m_lexer.get_token();	// Eat
 
 			Term term = FuncTerm();
-			if (term.valid == false) {
-				ret.valid = false;
-				return ret;
-			}
+			VERIFY(term);
 
 			term.op = t.data;
 			ret.optional.push_back(term);
 		} else {
-			printf("was: %s\n", t.data.c_str());
 			break;
 		}
 	}
@@ -165,10 +194,7 @@ ExprList Parser::ExpressionList()
 		ret.first.expr = new Expr();
 		*(ret.first.expr) = Expression();
 
-		if (ret.first.expr->valid == false) {
-			ret.valid = false;
-			return ret;
-		}
+		VERIFY(*(ret.first.expr));
 	}
 	//TODO: Else, expression.
 
@@ -193,10 +219,7 @@ Stmt Parser::Statement()
 		ret.print = new PrintStmt();
 		ret.print->list = ExpressionList();
 
-		if (ret.print->list.valid == false) {
-			ret.valid = false;
-			return ret;
-		}
+		VERIFY(ret.print->list);
 	} else if (t.data == "LET") {
 		m_lexer.get_token();
 
@@ -217,10 +240,7 @@ Stmt Parser::Statement()
 		ret.let->id = t.data;
 		ret.let->expr = Expression();
 
-		if (ret.let->expr.valid == false) {
-			ret.valid = false;
-			return ret;
-		}
+		VERIFY(ret.let->expr);
 	} else if (t.data == "END") {
 		m_lexer.get_token();	// Eat keyword
 		ret.end = true;

@@ -21,6 +21,9 @@ public:
 
 private:
 
+	void		display_factor(Factor f);
+	void		display_term(Term term);
+	void		display_expr(Expr expr);
 	void		display_print(PrintStmt* stmt);
 	void		emit_error(unsigned int line, const char* fmt, ...);
 
