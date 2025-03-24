@@ -1,3 +1,4 @@
+#include <cctype>
 #include <cassert>
 #include <cstdlib>
 #include <fstream>
@@ -69,6 +70,8 @@ void GenCode::first_pass()
 			cons.name = "const" + std::to_string(cons_index++);
 
 			m_constants.push_back(cons);
+		} else if (isdigit(c)) {
+			
 		}
 	}
 }

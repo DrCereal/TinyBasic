@@ -1,4 +1,3 @@
-10 PRINT "Hello, world"
-20 LET A = 2 * 5 + 3
-30 PRINT A
-40 END
+10 PRINT "lol not faking"
+20 PRINT 10
+30 END

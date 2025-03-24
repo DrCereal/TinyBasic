@@ -8,6 +8,8 @@ struct Expr;
 struct Factor
 {
 	bool		valid = false;
+	bool		evaled = false;
+	int			eval;
 
 	std::string op = "";
 	std::string	var = "";
@@ -18,6 +20,8 @@ struct Factor
 struct Term
 {
 	bool					valid = false;
+	bool					evaled = false;
+	int						eval;
 
 	std::string				op = "";
 	Factor					first;
@@ -27,6 +31,8 @@ struct Term
 struct Expr
 {
 	bool				valid = false;
+	bool				evaled = false;
+	int					eval;
 
 	Term 				first;
 	std::vector<Term>	optional;

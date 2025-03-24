@@ -8,6 +8,7 @@
  *		00 - print string
  *		01 - print number
  *		02 - print variable
+ *		06 - let
  *		0B - end
  */
 
@@ -29,6 +30,10 @@ public:
 
 private:
 
+	void	emit_factor(Factor f);
+	void	emit_term(Term term);
+	void	emit_expr(Expr expr);
+	void	emit_let(Stmt stmt);
 	void 	emit_print_string(Stmt stmt);
 	void 	emit_end();
 

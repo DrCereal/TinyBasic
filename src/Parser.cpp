@@ -24,8 +24,13 @@ void Parser::display_AST()
 		if (l.stmt.print != NULL) {
 			display_print(l.stmt.print);
 		} else if (l.stmt.let != NULL) {
-			printf("\t%s=\n", l.stmt.let->id.c_str());
-			display_expr(l.stmt.let->expr);
+			printf("\t%s=", l.stmt.let->id.c_str());
+			if (l.stmt.let->expr.evaled) {
+				printf("%d\n", l.stmt.let->expr.eval);
+			} else {
+				printf("\n");
+				display_expr(l.stmt.let->expr);
+			}
 		} else if (l.stmt.end) {
 			printf("\tend\n");
 		}
@@ -107,7 +112,9 @@ Factor Parser::FuncFactor()
 	if (t.type == "identifier") {
 		ret.var = t.data;
 	} else if (t.type == "number") {
-		ret.num = t.data;
+		ret.num = t.data;	// TODO: Remove
+		ret.evaled = true;
+		ret.eval = std::stoi(t.data);
 	} else {
 		m_lexer.unget_token();
 		ret.valid = false;
@@ -125,6 +132,11 @@ Term Parser::FuncTerm()
 
 	VERIFY(ret.first);
 
+	if (ret.first.evaled) {
+		ret.eval = ret.first.eval;
+		ret.evaled = true;
+	}
+
 	while (!m_lexer.is_eot()) {
 		Token t = m_lexer.peek_token();
 		if (t.type == "mult" || t.type == "div") {
@@ -138,6 +150,22 @@ Term Parser::FuncTerm()
 		} else {
 			break;
 		}
+	}
+
+	if (!ret.evaled)
+		return ret;
+	// Evaluate if constant
+	ret.evaled = true;
+	for (Factor f : ret.optional) {
+		if (!f.evaled) {
+			ret.evaled = false;
+			break;
+		}
+
+		if (f.op == "*")
+			ret.eval *= f.eval;
+		else if (f.op == "/")
+			ret.eval /= f.eval;
 	}
 
 	return ret;
@@ -155,9 +183,11 @@ Expr Parser::Expression()
 	}
 
 	ret.first = FuncTerm();
-	if (ret.first.valid == false) {
-		ret.valid = false;
-		return ret;
+	VERIFY(ret.first);
+
+	if (ret.first.evaled) {
+		ret.eval = ret.first.eval;
+		ret.evaled = true;
 	}
 
 	while (!m_lexer.is_eot()) {
@@ -173,6 +203,21 @@ Expr Parser::Expression()
 		} else {
 			break;
 		}
+	}
+
+	if (!ret.evaled)
+		return ret;
+	// Evaluate if constant
+	for (Term t : ret.optional) {
+		if (!t.evaled) {
+			ret.evaled = false;
+			break;
+		}
+
+		if (t.op == "+")
+			ret.eval += t.eval;
+		else if (t.op == "-")
+			ret.eval -= t.eval;
 	}
 
 	return ret;
